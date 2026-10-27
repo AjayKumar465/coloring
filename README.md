@@ -103,6 +103,25 @@ After a minute or two the site will be at `https://<user>.github.io/<repo>/`. Al
 
 If you change the art, run `node scripts/generate-images.js` and `node scripts/check.js` locally and commit the results, because GitHub won't regenerate anything. After you change files that the app shell caches, bump `VERSION` in `sw.js` so returning visitors get the update.
 
+## Android app (APK)
+
+The `android-apk` branch wraps the site in a native Android app with [Capacitor](https://capacitorjs.com/). All pictures and code are bundled inside, so the app works fully offline.
+
+- **Ready-made APK:** `apk/ColorJoy-1.0-debug.apk`. Copy it to an Android phone or tablet (Android 7.0 or newer), open it, and allow "Install unknown apps" when asked. It's signed with the standard debug key, which is fine for installing on your own devices but not for the Play Store.
+- **In the app:** the 💾 buttons open Android's share sheet so you can save a picture to Photos or Files, or send it. Printing isn't available in the app.
+
+To rebuild the APK you need Node 22+, JDK 21 and the Android SDK (platform 36). Set `ANDROID_HOME` or write `sdk.dir=/path/to/sdk` in `android/local.properties`, then run:
+
+```bash
+npm install
+npm run android:apk          # copies the site into www/, syncs Capacitor, builds with Gradle
+# output: android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+`npm run android:icons` redraws the launcher icons and splash screens from `icons/icon.svg` (needs Playwright). You can also open the `android/` folder in Android Studio to run the app on a device or emulator.
+
+**Publishing to Google Play** needs a release build signed with your own upload key: create a keystore with `keytool`, add a `signingConfigs` block to `android/app/build.gradle`, then run `./gradlew bundleRelease` to get an `.aab` file. Keep the keystore private and backed up; you need the same key for every update.
+
 ## Privacy
 
 ColorJoy collects nothing. It has no analytics, cookies, accounts or third-party requests. Artwork stays on the device unless the user downloads it.

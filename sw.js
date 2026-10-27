@@ -1,6 +1,6 @@
 // ColorJoy service worker: precaches the app shell, caches pictures as they are used,
 // and (when asked by the page) warms the cache with every picture for full offline use.
-const VERSION = 'colorjoy-v5';
+const VERSION = 'colorjoy-v6';
 const SHELL = `${VERSION}-shell`;
 const ART = `${VERSION}-art`;
 
@@ -21,6 +21,7 @@ const SHELL_FILES = [
   'js/animations.js',
   'js/stickers.js',
   'js/myart.js',
+  'js/native.js',
   'data/catalog.json',
   'stickers/stickers.json',
   'icons/icon.svg',

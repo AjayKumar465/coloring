@@ -13,6 +13,7 @@ import { PALETTE, PALETTE_CB, PATTERNS, paintFor, fillValue, isFilled, patternPr
 import { BRUSHES, createStroke, drawPreview } from './brushes.js';
 import { sketchFill, sparkleAt, confetti, createToolCursor } from './animations.js';
 import { createStickerLayer } from './stickers.js';
+import { isNative, shareImage } from './native.js';
 
 const RES = 1600; // paint canvas resolution (2x the 800 viewBox)
 const K = RES / 800;
@@ -111,7 +112,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     lifeBtn,
     saveBtn,
     btn('💾', 'Download picture', () => download(), { short: 'Download' }),
-    btn('🖨️', 'Print', () => printDialog(), { short: 'Print' }),
+    isNative() ? null : btn('🖨️', 'Print', () => printDialog(), { short: 'Print' }),
     btn('🗑️', 'Start over', () => clearAll(), { short: 'Clear' }),
     miniMascot
   );
@@ -694,6 +695,11 @@ export async function renderCanvas(catalog, image, setCleanup) {
   async function download() {
     try {
       const blob = await toBlob(await exportCanvas(1600));
+      if (isNative()) {
+        await shareImage(blob, `colorjoy-${image.id}.png`, image.title);
+        play('chime');
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = h('a', { href: url, download: `colorjoy-${image.id}.png` });
       document.body.append(a);

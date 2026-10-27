@@ -1,0 +1,8 @@
+{
+  "appId": "com.colorjoy.app",
+  "appName": "ColorJoy",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#fff8ec"
+  }
+}

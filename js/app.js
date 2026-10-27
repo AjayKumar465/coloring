@@ -4,6 +4,7 @@ import { settings, clearAll, progress } from './storage.js';
 import { play, unlockOnGesture } from './audio.js';
 import { mascotSVG, mascotReact } from './mascot.js';
 import { renderGallery } from './gallery.js';
+import { isNative } from './native.js';
 
 const view = document.getElementById('view');
 let catalogPromise = null;
@@ -167,7 +168,8 @@ function init() {
   document.getElementById('settings-btn').addEventListener('click', openSettings);
   addEventListener('hashchange', route);
   route();
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  // The Android app bundles every file already, so it needs no service worker.
+  if ('serviceWorker' in navigator && location.protocol !== 'file:' && !isNative()) {
     addEventListener('load', () => {
       navigator.serviceWorker.register('sw.js').then((reg) => {
         // Warm the cache with every picture so the whole gallery works offline.
