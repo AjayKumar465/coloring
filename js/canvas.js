@@ -169,8 +169,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     paletteRow.replaceChildren(
       ...palette.map(([c, name]) => swatch(c, name)),
       h('label', { class: 'swatch custom-color bouncy', title: 'Pick any color' }, custom),
-      recent.length ? h('span', { class: 'recent-label' }, 'Recent') : null,
-      ...recent.map((c) => swatch(c, `Recent color ${c}`))
+      ...(recent.length ? [h('span', { class: 'recent-label' }, 'Recent'), ...recent.map((c) => swatch(c, `Recent color ${c}`))] : [])
     );
   }
 
