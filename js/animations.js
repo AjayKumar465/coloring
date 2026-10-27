@@ -1,60 +1,137 @@
-// Visual delight: fill ripples, sparkles, confetti. All respect reduced motion.
+// Visual delight: sketchy crayon fills, sparkles, confetti. All respect reduced motion.
 import { reducedMotion } from './storage.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 let clipCounter = 0;
 
-// Animate a fill spreading from the tapped point inside the region, then commit it.
-export function rippleFill(path, paint, clientPt, done) {
+// Crayon tip that follows the scribble while a space is being colored.
+function crayonEl(color) {
+  const el = document.createElement('div');
+  el.className = 'crayon-tip';
+  el.innerHTML = `<svg viewBox="0 0 40 120" width="30" height="90" aria-hidden="true"><path d="M8 34L20 2L32 34Z" fill="${color}" stroke="#2b2340" stroke-width="3" stroke-linejoin="round"/><rect x="8" y="34" width="24" height="80" rx="4" fill="${color}" stroke="#2b2340" stroke-width="3"/><rect x="8" y="50" width="24" height="44" fill="#fff" opacity=".55"/><path d="M12 62h16M12 80h16" stroke="#2b2340" stroke-width="2.5" opacity=".5"/></svg>`;
+  document.body.append(el);
+  return el;
+}
+
+// Hand-drawn zig-zag rows covering a box, starting at the tapped row and
+// spreading up and down. Returns two continuous paths (down and up).
+function scribblePaths(bb, tap, s) {
+  const rowH = s * 1.7;
+  const rows = [];
+  for (let y = bb.y - rowH * 0.3; y < bb.y + bb.height + rowH * 0.5; y += rowH) rows.push(y);
+  const startRow = Math.max(0, Math.min(rows.length - 1, Math.round((tap.y - rows[0]) / rowH)));
+  const jit = () => (Math.random() - 0.5) * s * 0.5;
+  const row = (y, leftToRight) => {
+    const pts = [];
+    const x0 = bb.x - s, x1 = bb.x + bb.width + s;
+    const step = s * 0.85;
+    const n = Math.max(2, Math.ceil((x1 - x0) / step));
+    for (let i = 0; i <= n; i++) {
+      const t = leftToRight ? i / n : 1 - i / n;
+      pts.push([x0 + (x1 - x0) * t + jit(), y + (i % 2 ? rowH * 0.62 : -rowH * 0.62) + jit()]);
+    }
+    return pts;
+  };
+  const build = (indices) => {
+    const pts = [];
+    indices.forEach((ri, k) => pts.push(...row(rows[ri], k % 2 === 0)));
+    return pts.length ? 'M' + pts.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L') : '';
+  };
+  const down = [], up = [];
+  for (let i = startRow; i < rows.length; i++) down.push(i);
+  for (let i = startRow - 1; i >= 0; i--) up.push(i);
+  return [build(down), build(up)];
+}
+
+// Animate a space being colored in with crayon scribbles, then commit the fill.
+// Returns the animation duration in ms (0 when it ran instantly).
+export function sketchFill(path, paint, clientPt, done, { color = '#888', crayon = true, fast = false } = {}) {
   if (reducedMotion() || !path.getBBox) {
     done();
-    return;
+    return 0;
   }
-  const svg = path.ownerSVGElement;
-  const parent = path.parentNode;
-  let local;
+  let local, bb;
   try {
-    const ctm = parent.getScreenCTM().inverse();
-    const p = svg.createSVGPoint();
+    const p = path.ownerSVGElement.createSVGPoint();
     p.x = clientPt.x;
     p.y = clientPt.y;
-    local = p.matrixTransform(ctm);
+    local = p.matrixTransform(path.getScreenCTM().inverse());
+    bb = path.getBBox();
   } catch {
     done();
-    return;
+    return 0;
   }
-  const bb = path.getBBox();
-  const corners = [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]];
-  const R = Math.max(...corners.map(([x, y]) => Math.hypot(x - local.x, y - local.y))) + 4;
+  const parent = path.parentNode;
   const id = `cj-clip-${++clipCounter}`;
   const clip = document.createElementNS(NS, 'clipPath');
   clip.id = id;
   const use = document.createElementNS(NS, 'use');
   use.setAttribute('href', `#${path.id}`);
   clip.append(use);
-  const circle = document.createElementNS(NS, 'circle');
-  circle.setAttribute('cx', local.x);
-  circle.setAttribute('cy', local.y);
-  circle.setAttribute('r', 0);
-  circle.setAttribute('clip-path', `url(#${id})`);
-  circle.style.fill = paint;
-  circle.style.pointerEvents = 'none';
+  // Outer group is clipped in the parent's space; inner group shares the path's own transform.
+  const outer = document.createElementNS(NS, 'g');
+  outer.setAttribute('clip-path', `url(#${id})`);
+  outer.setAttribute('class', 'cj-scribble');
+  outer.style.pointerEvents = 'none';
+  const inner = document.createElementNS(NS, 'g');
+  if (path.getAttribute('transform')) inner.setAttribute('transform', path.getAttribute('transform'));
+  outer.append(inner);
+  const size = Math.max(bb.width, bb.height);
+  const s = Math.max(9, Math.min(30, size / 11));
+  const strokes = scribblePaths(bb, local, s).filter(Boolean).map((d) => {
+    const el = document.createElementNS(NS, 'path');
+    el.setAttribute('d', d);
+    el.setAttribute('fill', 'none');
+    el.setAttribute('stroke-linecap', 'round');
+    el.setAttribute('stroke-linejoin', 'round');
+    el.style.stroke = paint;
+    el.style.strokeWidth = s * 1.45;
+    inner.append(el);
+    return el;
+  });
   parent.insertBefore(clip, path.nextSibling);
-  parent.insertBefore(circle, clip.nextSibling);
+  parent.insertBefore(outer, clip.nextSibling);
+  const lens = strokes.map((el) => el.getTotalLength());
+  strokes.forEach((el, i) => {
+    el.style.strokeDasharray = `${lens[i]} ${lens[i]}`;
+    el.style.strokeDashoffset = lens[i];
+  });
+  const longest = Math.max(1, ...lens);
+  const dur = Math.round(Math.max(380, Math.min(fast ? 700 : 1300, longest / 3.2)));
+  const leader = strokes[lens.indexOf(longest)];
+  const tip = crayon ? crayonEl(color) : null;
   const start = performance.now();
-  const dur = Math.min(520, 220 + R * 0.6);
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    done();
+    tip?.remove();
+    // Let the scribble fade into the solid color.
+    outer.style.transition = 'opacity .25s';
+    outer.style.opacity = '0';
+    setTimeout(() => { outer.remove(); clip.remove(); }, 260);
+  };
   const tick = (now) => {
+    if (finished) return;
     const t = Math.max(0, Math.min(1, (now - start) / dur));
-    const e = 1 - Math.pow(1 - t, 3);
-    circle.setAttribute('r', R * e);
-    if (t < 1) requestAnimationFrame(tick);
-    else {
-      done();
-      circle.remove();
-      clip.remove();
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    strokes.forEach((el, i) => { el.style.strokeDashoffset = lens[i] - lens[i] * Math.min(1, (e * longest) / lens[i]); });
+    if (tip && leader) {
+      const pt = leader.getPointAtLength(Math.min(lens[strokes.indexOf(leader)], e * longest));
+      const sp = path.ownerSVGElement.createSVGPoint();
+      sp.x = pt.x;
+      sp.y = pt.y;
+      const c = sp.matrixTransform(inner.getScreenCTM());
+      tip.style.transform = `translate(${c.x}px, ${c.y}px) rotate(${200 + Math.sin(now / 55) * 10}deg)`;
     }
+    if (t < 1) requestAnimationFrame(tick);
+    else finish();
   };
   requestAnimationFrame(tick);
+  // Safety net if the tab is hidden and rAF pauses.
+  setTimeout(finish, dur + 600);
+  return dur;
 }
 
 const SPARKS = ['✨', '⭐', '💫', '🌟'];
