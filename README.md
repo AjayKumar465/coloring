@@ -87,19 +87,21 @@ All art is produced by `scripts/generate-images.js` from small drawing modules i
    node scripts/preview.js animals preview.png   # optional contact sheet (needs Playwright)
    ```
 
-You can also drop in a hand-made SVG. Use `viewBox="0 0 800 800"` and black outlines, and give every closed region a `<path id="…" class="fillable">`. Then add a matching entry to `data/catalog.json`: `{ id, title, category, difficulty, file, tags, anim }`. If you do this, delete the "Regenerate art" step from the deploy workflow, because regenerating would overwrite your edited catalog.
+You can also drop in a hand-made SVG. Use `viewBox="0 0 800 800"` and black outlines, and give every closed region a `<path id="…" class="fillable">`. Then add a matching entry to `data/catalog.json`: `{ id, title, category, difficulty, file, tags, anim }`. Running the generator again will overwrite a hand-edited catalog, so re-add your entry afterwards.
 
 Difficulty is set automatically from the region count: easy ≤ 14, medium ≤ 32, hard above that.
 
 ## Deploy to GitHub Pages
 
-1. Push the repository to GitHub.
-2. Open **Settings → Pages** and set **Source** to **GitHub Actions**.
-3. Push to `main`, or run the workflow by hand from the **Actions** tab. `.github/workflows/deploy.yml` regenerates the art, runs `scripts/check.js` and publishes the site.
+The site is plain static files in the repository root, so no build step or GitHub Actions is needed.
 
-The site will be at `https://<user>.github.io/<repo>/`. All paths are relative, so it works from that subfolder.
+1. Open **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
+3. Pick the branch (for example `main`) and the **/ (root)** folder, then click **Save**.
 
-After you change files that the app shell caches, bump `VERSION` in `sw.js` so returning visitors get the update.
+After a minute or two the site will be at `https://<user>.github.io/<repo>/`. All paths are relative, so it works from that subfolder. The `.nojekyll` file makes GitHub serve the files as they are.
+
+If you change the art, run `node scripts/generate-images.js` and `node scripts/check.js` locally and commit the results, because GitHub won't regenerate anything. After you change files that the app shell caches, bump `VERSION` in `sw.js` so returning visitors get the update.
 
 ## Privacy
 
