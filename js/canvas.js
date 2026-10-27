@@ -11,7 +11,7 @@ import { play } from './audio.js';
 import { mascotSVG, mascotReact } from './mascot.js';
 import { PALETTE, PALETTE_CB, PATTERNS, paintFor, fillValue, isFilled, patternPreviewCSS, magicPalette, shade } from './tools.js';
 import { BRUSHES, createStroke, drawPreview } from './brushes.js';
-import { sketchFill, sparkleAt, confetti } from './animations.js';
+import { sketchFill, sparkleAt, confetti, createToolCursor } from './animations.js';
 import { createStickerLayer } from './stickers.js';
 
 const RES = 1600; // paint canvas resolution (2x the 800 viewBox)
@@ -189,6 +189,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
   // ---------- Tools ----------
   function setTool(id) {
     state.tool = id;
+    toolCursor?.hide();
     toolButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
     wrap.className = `stage-wrap tool-${id}`;
     stickers.setEditable(id === 'sticker');
@@ -226,7 +227,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
       }));
       items.unshift(hint('Tap the picture to stamp!'));
     } else if (state.tool === 'fill') items = [hint('👆 Tap a space to fill it with color!')];
-    else if (state.tool === 'eraser') items = [hint('Rub out brush marks. Lines never get erased.')];
+    else if (state.tool === 'eraser') items = [hint('Rub out colors, brush marks and stickers. Lines never get erased.')];
     else items = [hint('Drag to move around. Pinch or use ➕ ➖ to zoom.')];
     options.replaceChildren(...items);
   }
@@ -373,6 +374,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
       ctx.putImageData(a[key], a.x, a.y);
       state.hasPaint = true;
     } else if (a.type === 'stickers') stickers.set(a[key]);
+    else if (a.type === 'group') (dir === 'undo' ? [...a.actions].reverse() : a.actions).forEach((x) => applyAction(x, dir));
     else if (a.type === 'clear') {
       if (dir === 'undo') {
         for (const [id, v] of Object.entries(a.fills)) applyFill(id, v);
@@ -459,6 +461,9 @@ export async function renderCanvas(catalog, image, setCleanup) {
   // ---------- Pointer input ----------
   const pointers = new Map();
   let gesture = null;
+  const toolCursor = createToolCursor();
+  const drawTool = () => state.tool === 'brush' || state.tool === 'eraser';
+  const cursorType = () => (state.tool === 'eraser' ? 'eraser' : state.brush);
 
   function beginStroke(e) {
     const type = state.tool === 'eraser' ? 'eraser' : state.brush;
@@ -470,6 +475,13 @@ export async function renderCanvas(catalog, image, setCleanup) {
     const size = state.size * K;
     const stroke = createStroke(type, state.color, size);
     gesture = { kind: 'stroke', stroke, last: pt, snapshot, box: { x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y }, pad: size * 1.2 + 4, type };
+    toolCursor.show(type, state.color, e.clientX, e.clientY);
+    toolCursor.press(true);
+    if (type === 'eraser') {
+      gesture.fillChanges = new Map();
+      gesture.stickersBefore = null;
+      eraseUnder(e.clientX, e.clientY);
+    }
     stroke.paint(ctx, pt, pt);
     if (type !== 'eraser') rememberColor(state.color);
   }
@@ -479,6 +491,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     for (const ev of events.length ? events : [e]) {
       const p = toArt(ev.clientX, ev.clientY);
       const pt = { x: p.x * K, y: p.y * K };
+      if (gesture.type === 'eraser') eraseUnder(ev.clientX, ev.clientY);
       const sparks = gesture.stroke.paint(ctx, gesture.last, pt);
       gesture.last = pt;
       const b = gesture.box;
@@ -490,16 +503,43 @@ export async function renderCanvas(catalog, image, setCleanup) {
     }
   }
 
+  // The eraser also clears bucket/pattern fills and stickers it touches.
+  function eraseUnder(clientX, clientY) {
+    const g = gesture;
+    const r = stage.getBoundingClientRect();
+    const rad = ((state.size / 2) * r.width) / 800;
+    const probes = [[0, 0], [rad * 0.7, 0], [-rad * 0.7, 0], [0, rad * 0.7], [0, -rad * 0.7]];
+    for (const [dx, dy] of probes) {
+      const el = document.elementFromPoint(clientX + dx, clientY + dy)?.closest('.fillable');
+      if (!el || !fillSvg.contains(el) || !state.fills[el.id]) continue;
+      if (!g.fillChanges.has(el.id)) g.fillChanges.set(el.id, state.fills[el.id]);
+      applyFill(el.id, null);
+    }
+    const p = toArt(clientX, clientY);
+    const current = stickers.get();
+    const keep = current.filter((st) => Math.hypot(st.x - p.x, st.y - p.y) > st.size * 0.42 + state.size / 2);
+    if (keep.length !== current.length) {
+      if (!g.stickersBefore) g.stickersBefore = current;
+      stickers.set(keep);
+    }
+  }
+
   function endStroke() {
     const g = gesture;
     gesture = null;
+    const actions = [];
     const x = Math.max(0, Math.floor(g.box.x0 - g.pad)), y = Math.max(0, Math.floor(g.box.y0 - g.pad));
     const w = Math.min(RES, Math.ceil(g.box.x1 + g.pad)) - x, hgt = Math.min(RES, Math.ceil(g.box.y1 + g.pad)) - y;
-    if (w <= 0 || hgt <= 0) return;
-    const before = g.snapshot.getContext('2d').getImageData(x, y, w, hgt);
-    const after = ctx.getImageData(x, y, w, hgt);
-    state.hasPaint = true;
-    push({ type: 'paint', x, y, before, after });
+    if (w > 0 && hgt > 0) {
+      const before = g.snapshot.getContext('2d').getImageData(x, y, w, hgt);
+      const after = ctx.getImageData(x, y, w, hgt);
+      state.hasPaint = true;
+      actions.push({ type: 'paint', x, y, before, after });
+    }
+    if (g.fillChanges?.size) actions.push({ type: 'fill', changes: [...g.fillChanges].map(([id, from]) => ({ id, from, to: null })) });
+    if (g.stickersBefore) actions.push({ type: 'stickers', before: g.stickersBefore, after: stickers.get() });
+    if (actions.length === 1) push(actions[0]);
+    else if (actions.length) push({ type: 'group', actions });
     if (g.type === 'eraser') play('erase');
   }
 
@@ -513,6 +553,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const o = origin();
       const { s, tx, ty } = state.zoom;
+      toolCursor.hide();
       gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: s, u: { x: (mid.x - o.x - tx) / s, y: (mid.y - o.y - ty) / s } };
       return;
     }
@@ -523,6 +564,8 @@ export async function renderCanvas(catalog, image, setCleanup) {
   });
 
   wrap.addEventListener('pointermove', (e) => {
+    // With a mouse, show the drawing tool while hovering so you can see where it will draw.
+    if (!pointers.size && e.pointerType === 'mouse' && drawTool()) toolCursor.show(cursorType(), state.color, e.clientX, e.clientY);
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (!gesture) return;
@@ -534,7 +577,10 @@ export async function renderCanvas(catalog, image, setCleanup) {
       setZoom(ns, mid.x - o.x - gesture.u.x * ns, mid.y - o.y - gesture.u.y * ns);
     } else if (gesture.kind === 'pan') {
       setZoom(state.zoom.s, gesture.tx + e.clientX - gesture.x, gesture.ty + e.clientY - gesture.y);
-    } else if (gesture.kind === 'stroke') continueStroke(e);
+    } else if (gesture.kind === 'stroke') {
+      toolCursor.move(e.clientX, e.clientY);
+      continueStroke(e);
+    }
     else if (gesture.kind === 'tap' && Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) > 14 && state.zoom.s > 1) {
       // Dragging with the fill tool while zoomed pans the picture.
       gesture = { kind: 'pan', x: e.clientX, y: e.clientY, tx: state.zoom.tx, ty: state.zoom.ty };
@@ -549,8 +595,11 @@ export async function renderCanvas(catalog, image, setCleanup) {
       if (pointers.size < 2) gesture = null;
       return;
     }
-    if (gesture.kind === 'stroke') endStroke();
-    else if (gesture.kind === 'tap' && e.type === 'pointerup') {
+    if (gesture.kind === 'stroke') {
+      endStroke();
+      toolCursor.press(false);
+      if (e.pointerType !== 'mouse') toolCursor.hide();
+    } else if (gesture.kind === 'tap' && e.type === 'pointerup') {
       if (state.tool === 'fill' || state.tool === 'pattern') {
         const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('.fillable');
         if (el && fillSvg.contains(el)) fillRegion(el, { x: e.clientX, y: e.clientY });
@@ -563,6 +612,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     gesture = null;
   }
   wrap.addEventListener('pointerup', pointerEnd);
+  wrap.addEventListener('pointerleave', () => { if (!gesture) toolCursor.hide(); });
   wrap.addEventListener('pointercancel', pointerEnd);
 
   function onKey(e) {
@@ -738,6 +788,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
 
   setCleanup(() => {
     ro.disconnect();
+    toolCursor.destroy();
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onHide);
     if (saveTimer) {
