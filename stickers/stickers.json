@@ -1,0 +1,202 @@
+[
+ {
+  "id": "star",
+  "title": "Gold Star",
+  "file": "stickers/star.svg"
+ },
+ {
+  "id": "heart",
+  "title": "Heart",
+  "file": "stickers/heart.svg"
+ },
+ {
+  "id": "smile",
+  "title": "Smiley",
+  "file": "stickers/smile.svg"
+ },
+ {
+  "id": "laugh",
+  "title": "Laughing Face",
+  "file": "stickers/laugh.svg"
+ },
+ {
+  "id": "cool",
+  "title": "Cool Face",
+  "file": "stickers/cool.svg"
+ },
+ {
+  "id": "love-eyes",
+  "title": "Love Eyes",
+  "file": "stickers/love-eyes.svg"
+ },
+ {
+  "id": "sun",
+  "title": "Sunshine",
+  "file": "stickers/sun.svg"
+ },
+ {
+  "id": "moon",
+  "title": "Moon",
+  "file": "stickers/moon.svg"
+ },
+ {
+  "id": "cloud",
+  "title": "Cloud",
+  "file": "stickers/cloud.svg"
+ },
+ {
+  "id": "rainbow",
+  "title": "Rainbow",
+  "file": "stickers/rainbow.svg"
+ },
+ {
+  "id": "flower",
+  "title": "Flower",
+  "file": "stickers/flower.svg"
+ },
+ {
+  "id": "tulip",
+  "title": "Tulip",
+  "file": "stickers/tulip.svg"
+ },
+ {
+  "id": "butterfly",
+  "title": "Butterfly",
+  "file": "stickers/butterfly.svg"
+ },
+ {
+  "id": "ladybug",
+  "title": "Ladybug",
+  "file": "stickers/ladybug.svg"
+ },
+ {
+  "id": "bee",
+  "title": "Bee",
+  "file": "stickers/bee.svg"
+ },
+ {
+  "id": "fish",
+  "title": "Fish",
+  "file": "stickers/fish.svg"
+ },
+ {
+  "id": "cat",
+  "title": "Kitty",
+  "file": "stickers/cat.svg"
+ },
+ {
+  "id": "dog",
+  "title": "Puppy",
+  "file": "stickers/dog.svg"
+ },
+ {
+  "id": "bunny",
+  "title": "Bunny",
+  "file": "stickers/bunny.svg"
+ },
+ {
+  "id": "bear",
+  "title": "Bear",
+  "file": "stickers/bear.svg"
+ },
+ {
+  "id": "pig",
+  "title": "Piggy",
+  "file": "stickers/pig.svg"
+ },
+ {
+  "id": "frog",
+  "title": "Froggy",
+  "file": "stickers/frog.svg"
+ },
+ {
+  "id": "balloon",
+  "title": "Balloon",
+  "file": "stickers/balloon.svg"
+ },
+ {
+  "id": "gift",
+  "title": "Gift",
+  "file": "stickers/gift.svg"
+ },
+ {
+  "id": "cupcake",
+  "title": "Cupcake",
+  "file": "stickers/cupcake.svg"
+ },
+ {
+  "id": "ice-cream",
+  "title": "Ice Cream",
+  "file": "stickers/ice-cream.svg"
+ },
+ {
+  "id": "donut",
+  "title": "Donut",
+  "file": "stickers/donut.svg"
+ },
+ {
+  "id": "apple",
+  "title": "Apple",
+  "file": "stickers/apple.svg"
+ },
+ {
+  "id": "strawberry",
+  "title": "Strawberry",
+  "file": "stickers/strawberry.svg"
+ },
+ {
+  "id": "rocket",
+  "title": "Rocket",
+  "file": "stickers/rocket.svg"
+ },
+ {
+  "id": "crown",
+  "title": "Crown",
+  "file": "stickers/crown.svg"
+ },
+ {
+  "id": "diamond",
+  "title": "Gem",
+  "file": "stickers/diamond.svg"
+ },
+ {
+  "id": "music",
+  "title": "Music Note",
+  "file": "stickers/music.svg"
+ },
+ {
+  "id": "lightning",
+  "title": "Lightning",
+  "file": "stickers/lightning.svg"
+ },
+ {
+  "id": "snowflake",
+  "title": "Snowflake",
+  "file": "stickers/snowflake.svg"
+ },
+ {
+  "id": "sparkle",
+  "title": "Sparkle",
+  "file": "stickers/sparkle.svg"
+ },
+ {
+  "id": "paw",
+  "title": "Paw Print",
+  "file": "stickers/paw.svg"
+ },
+ {
+  "id": "unicorn",
+  "title": "Unicorn",
+  "file": "stickers/unicorn.svg"
+ },
+ {
+  "id": "car",
+  "title": "Red Car",
+  "file": "stickers/car.svg"
+ },
+ {
+  "id": "trophy",
+  "title": "Trophy",
+  "file": "stickers/trophy.svg"
+ }
+]

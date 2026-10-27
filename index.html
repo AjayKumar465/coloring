@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ColorJoy – Coloring Fun for Kids</title>
+  <meta name="description" content="ColorJoy is a free, ad-free coloring app for kids with 230+ original pictures, magic brushes, stickers and animations. Works offline.">
+  <meta name="theme-color" content="#ff6b6b">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ColorJoy">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="modulepreload" href="js/app.js">
+</head>
+<body>
+  <a class="skip-link" href="#view">Skip to content</a>
+  <header class="app-header">
+    <a class="brand bouncy" href="#/" aria-label="ColorJoy home">
+      <img src="icons/icon.svg" alt="" width="44" height="44">
+      <span class="brand-name">Color<span>Joy</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Main">
+      <a class="nav-btn bouncy" href="#/" data-nav="home" aria-label="Home"><span aria-hidden="true">🏠</span><span class="nav-label">Home</span></a>
+      <a class="nav-btn bouncy" href="#/gallery" data-nav="gallery" aria-label="Pictures"><span aria-hidden="true">🖼️</span><span class="nav-label">Pictures</span></a>
+      <a class="nav-btn bouncy" href="#/art" data-nav="art" aria-label="My Art"><span aria-hidden="true">⭐</span><span class="nav-label">My Art</span></a>
+      <button class="nav-btn bouncy" id="sound-toggle" type="button" aria-label="Sound on" aria-pressed="true"><span aria-hidden="true">🔊</span><span class="nav-label">Sound</span></button>
+      <button class="nav-btn bouncy" id="settings-btn" type="button" aria-label="Settings for grown-ups"><span aria-hidden="true">⚙️</span><span class="nav-label">Grown-ups</span></button>
+    </nav>
+  </header>
+  <main id="view" tabindex="-1" aria-live="polite"></main>
+  <div id="print-area" aria-hidden="true"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">ColorJoy needs JavaScript turned on to color pictures.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
