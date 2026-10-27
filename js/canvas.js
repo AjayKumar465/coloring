@@ -11,7 +11,7 @@ import { play } from './audio.js';
 import { mascotSVG, mascotReact } from './mascot.js';
 import { PALETTE, PALETTE_CB, PATTERNS, paintFor, fillValue, isFilled, patternPreviewCSS, magicPalette, shade } from './tools.js';
 import { BRUSHES, createStroke, drawPreview } from './brushes.js';
-import { sketchFill, sparkleAt, confetti } from './animations.js';
+import { sketchFill, sparkleAt, confetti, createToolCursor } from './animations.js';
 import { createStickerLayer } from './stickers.js';
 
 const RES = 1600; // paint canvas resolution (2x the 800 viewBox)
@@ -189,6 +189,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
   // ---------- Tools ----------
   function setTool(id) {
     state.tool = id;
+    toolCursor?.hide();
     toolButtons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === id)));
     wrap.className = `stage-wrap tool-${id}`;
     stickers.setEditable(id === 'sticker');
@@ -460,6 +461,9 @@ export async function renderCanvas(catalog, image, setCleanup) {
   // ---------- Pointer input ----------
   const pointers = new Map();
   let gesture = null;
+  const toolCursor = createToolCursor();
+  const drawTool = () => state.tool === 'brush' || state.tool === 'eraser';
+  const cursorType = () => (state.tool === 'eraser' ? 'eraser' : state.brush);
 
   function beginStroke(e) {
     const type = state.tool === 'eraser' ? 'eraser' : state.brush;
@@ -471,6 +475,8 @@ export async function renderCanvas(catalog, image, setCleanup) {
     const size = state.size * K;
     const stroke = createStroke(type, state.color, size);
     gesture = { kind: 'stroke', stroke, last: pt, snapshot, box: { x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y }, pad: size * 1.2 + 4, type };
+    toolCursor.show(type, state.color, e.clientX, e.clientY);
+    toolCursor.press(true);
     if (type === 'eraser') {
       gesture.fillChanges = new Map();
       gesture.stickersBefore = null;
@@ -547,6 +553,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       const o = origin();
       const { s, tx, ty } = state.zoom;
+      toolCursor.hide();
       gesture = { kind: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, s0: s, u: { x: (mid.x - o.x - tx) / s, y: (mid.y - o.y - ty) / s } };
       return;
     }
@@ -557,6 +564,8 @@ export async function renderCanvas(catalog, image, setCleanup) {
   });
 
   wrap.addEventListener('pointermove', (e) => {
+    // With a mouse, show the drawing tool while hovering so you can see where it will draw.
+    if (!pointers.size && e.pointerType === 'mouse' && drawTool()) toolCursor.show(cursorType(), state.color, e.clientX, e.clientY);
     if (!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (!gesture) return;
@@ -568,7 +577,10 @@ export async function renderCanvas(catalog, image, setCleanup) {
       setZoom(ns, mid.x - o.x - gesture.u.x * ns, mid.y - o.y - gesture.u.y * ns);
     } else if (gesture.kind === 'pan') {
       setZoom(state.zoom.s, gesture.tx + e.clientX - gesture.x, gesture.ty + e.clientY - gesture.y);
-    } else if (gesture.kind === 'stroke') continueStroke(e);
+    } else if (gesture.kind === 'stroke') {
+      toolCursor.move(e.clientX, e.clientY);
+      continueStroke(e);
+    }
     else if (gesture.kind === 'tap' && Math.hypot(e.clientX - gesture.x, e.clientY - gesture.y) > 14 && state.zoom.s > 1) {
       // Dragging with the fill tool while zoomed pans the picture.
       gesture = { kind: 'pan', x: e.clientX, y: e.clientY, tx: state.zoom.tx, ty: state.zoom.ty };
@@ -583,8 +595,11 @@ export async function renderCanvas(catalog, image, setCleanup) {
       if (pointers.size < 2) gesture = null;
       return;
     }
-    if (gesture.kind === 'stroke') endStroke();
-    else if (gesture.kind === 'tap' && e.type === 'pointerup') {
+    if (gesture.kind === 'stroke') {
+      endStroke();
+      toolCursor.press(false);
+      if (e.pointerType !== 'mouse') toolCursor.hide();
+    } else if (gesture.kind === 'tap' && e.type === 'pointerup') {
       if (state.tool === 'fill' || state.tool === 'pattern') {
         const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('.fillable');
         if (el && fillSvg.contains(el)) fillRegion(el, { x: e.clientX, y: e.clientY });
@@ -597,6 +612,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     gesture = null;
   }
   wrap.addEventListener('pointerup', pointerEnd);
+  wrap.addEventListener('pointerleave', () => { if (!gesture) toolCursor.hide(); });
   wrap.addEventListener('pointercancel', pointerEnd);
 
   function onKey(e) {
@@ -772,6 +788,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
 
   setCleanup(() => {
     ro.disconnect();
+    toolCursor.destroy();
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('visibilitychange', onHide);
     if (saveTimer) {
