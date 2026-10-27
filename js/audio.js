@@ -48,7 +48,14 @@ function noise(start, dur, vol = 0.3, freq = 2000) {
   src.start(start);
 }
 
+// Scratchy crayon-on-paper: short bursts of filtered noise, one per stroke.
+function scribble(t, { dur = 800 } = {}) {
+  const strokes = Math.max(3, Math.round(dur / 110));
+  for (let i = 0; i < strokes; i++) noise(t + (i * dur) / 1000 / strokes, 0.09, 0.09 + Math.random() * 0.05, 2400 + Math.random() * 1800);
+}
+
 const SOUNDS = {
+  scribble,
   click: (t) => tone(660, t, 0.06, { type: 'triangle', vol: 0.3 }),
   pop: (t) => tone(420 + Math.random() * 200, t, 0.14, { vol: 0.5, slide: 500 }),
   stamp: (t) => { tone(200, t, 0.12, { type: 'square', vol: 0.15, slide: -80 }); noise(t, 0.08, 0.2, 900); },
@@ -66,12 +73,12 @@ const SOUNDS = {
   },
 };
 
-export function play(name) {
+export function play(name, opts) {
   if (!settings.get().sound) return;
   const c = ac();
   if (!c || !SOUNDS[name]) return;
   try {
-    SOUNDS[name](c.currentTime + 0.01);
+    SOUNDS[name](c.currentTime + 0.01, opts);
   } catch {
     /* ignore audio failures */
   }

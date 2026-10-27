@@ -11,7 +11,7 @@ import { play } from './audio.js';
 import { mascotSVG, mascotReact } from './mascot.js';
 import { PALETTE, PALETTE_CB, PATTERNS, paintFor, fillValue, isFilled, patternPreviewCSS, magicPalette, shade } from './tools.js';
 import { BRUSHES, createStroke, drawPreview } from './brushes.js';
-import { rippleFill, sparkleAt, confetti } from './animations.js';
+import { sketchFill, sparkleAt, confetti } from './animations.js';
 import { createStickerLayer } from './stickers.js';
 
 const RES = 1600; // paint canvas resolution (2x the 800 viewBox)
@@ -243,7 +243,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
   });
 
   // ---------- Fill ----------
-  function applyFill(id, value, animate = false, clientPt = null) {
+  function applyFill(id, value, animate = false, clientPt = null, anim = {}) {
     const el = fillSvg.getElementById(id);
     if (!el) return;
     if (!value) {
@@ -253,18 +253,23 @@ export async function renderCanvas(catalog, image, setCleanup) {
     }
     state.fills[id] = value;
     const p = paintFor(fillSvg, value);
-    if (animate && clientPt) rippleFill(el, p, clientPt, () => { el.style.fill = p; });
-    else el.style.fill = p;
+    if (animate && clientPt) {
+      const color = value.startsWith('pat:') ? value.split(':')[2] : value;
+      return sketchFill(el, p, clientPt, () => { el.style.fill = p; }, { color, ...anim });
+    }
+    el.style.fill = p;
+    return 0;
   }
 
   function fillRegion(el, clientPt) {
     const value = state.tool === 'pattern' ? fillValue(state.pattern, state.color) : state.color;
     const from = state.fills[el.id] || null;
     if (from === value) return;
-    applyFill(el.id, value, true, clientPt);
+    const dur = applyFill(el.id, value, true, clientPt);
     push({ type: 'fill', changes: [{ id: el.id, from, to: value }] });
     rememberColor(state.color);
-    play('pop');
+    if (dur) play('scribble', { dur });
+    else play('pop');
     checkProgress();
   }
 
@@ -340,7 +345,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
     changes.forEach((ch, i) => {
       const el = fillSvg.getElementById(ch.id);
       if (fast) applyFill(ch.id, ch.to);
-      else setTimeout(() => applyFill(ch.id, ch.to, true, regionCenter(el)), Math.min(1200, i * 18));
+      else setTimeout(() => applyFill(ch.id, ch.to, true, regionCenter(el), { crayon: false, fast: true }), Math.min(1200, i * 18));
     });
     push({ type: 'fill', changes });
     play('magic');
@@ -575,7 +580,7 @@ export async function renderCanvas(catalog, image, setCleanup) {
 
   function svgDataURL(svgEl, size, linesOnly) {
     const c = svgEl.cloneNode(true);
-    c.querySelectorAll('clipPath[id^="cj-clip"], circle[clip-path]').forEach((n) => n.remove());
+    c.querySelectorAll('clipPath[id^="cj-clip"], g.cj-scribble').forEach((n) => n.remove());
     c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     c.setAttribute('width', size);
     c.setAttribute('height', size);
